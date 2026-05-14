@@ -32,14 +32,40 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 .day-card{background:var(--white);border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)}
 .day-card-hdr{padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
 .day-card-num{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:22px;color:var(--white);flex-shrink:0}
-.day-card-title{font-weight:500;font-size:14px;line-height:1.3}
-.day-card-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
-.day-card-body{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.day-card-title-wrap{flex:1;min-width:0}
+.day-card-title{font-weight:500;font-size:14px;line-height:1.3;border:none;background:transparent;font-family:'DM Sans',sans-serif;color:var(--navy);width:100%;padding:1px 4px;border-radius:5px;transition:background .15s}
+.day-card-title:hover,.day-card-title:focus{background:var(--bg);outline:none}
+.day-card-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;border:none;background:transparent;padding:1px 4px;border-radius:5px;width:100%;transition:background .15s}
+.day-card-date:hover,.day-card-date:focus{background:var(--bg);outline:none}
+.day-card-hdr-actions{display:flex;gap:4px;flex-shrink:0}
+.jbtn{padding:4px 10px;border:1.5px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;color:var(--muted);transition:all .15s;white-space:nowrap}
+.jbtn:hover{border-color:var(--orange);color:var(--orange)}
+.jbtn.map{border-color:var(--blue);color:var(--blue)}
+.jbtn.map:hover{background:var(--blue);color:white}
+.day-card-body{padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+/* journal loc rows */
+.jloc{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid transparent;transition:all .15s;cursor:default;position:relative}
+.jloc:hover{background:var(--bg);border-color:var(--border)}
+.jloc-icon{font-size:15px;flex-shrink:0;width:22px;text-align:center}
+.jloc-info{flex:1;min-width:0}
+.jloc-name{font-size:13px;font-weight:500;color:var(--navy);line-height:1.3}
+.jloc-meta{font-size:11px;color:var(--muted);line-height:1.4}
+.jloc-actions{display:flex;gap:3px;opacity:0;transition:opacity .15s;flex-shrink:0}
+.jloc:hover .jloc-actions{opacity:1}
+.jloc-btn{background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:6px;font-size:12px;color:var(--muted);transition:all .15s}
+.jloc-btn:hover{background:var(--border);color:var(--navy)}
+.jloc-btn.map-fly{color:var(--blue)}
+.jloc-btn.del:hover{color:var(--red);background:#FFF0F0}
+.jloc.done-loc .jloc-name{text-decoration:line-through;opacity:.5}
+.jloc-done-badge{font-size:9px;background:var(--green);color:white;padding:1px 5px;border-radius:8px;margin-left:4px}
 .day-act{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5}
 .day-act .ic{font-size:15px;flex-shrink:0;margin-top:1px}
 .day-act a{color:var(--blue);text-decoration:none}
 .day-act a:hover{text-decoration:underline}
 .day-warn{background:#FFF8DC;border:1px solid #F0D060;border-radius:8px;padding:8px 12px;font-size:12px;color:#805010;margin-top:4px;line-height:1.5}
+.j-add-btn{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:7px;border:1.5px dashed var(--border);border-radius:9px;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;margin-top:4px;transition:all .2s}
+.j-add-btn:hover{border-color:var(--orange);color:var(--orange);border-style:solid}
+.j-sync-hint{font-size:10px;color:var(--muted);background:linear-gradient(135deg,#F0F4FF,#E8F0FF);border:1px solid #C8D8FF;border-radius:8px;padding:6px 10px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
 /* Beaches grid */
 .beach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .beach-card{background:var(--white);border-radius:12px;padding:12px 14px;border:1px solid var(--border);box-shadow:var(--shadow)}
@@ -217,6 +243,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 <div id="tab-journal" class="tab-content on" style="display:block;overflow-y:auto;padding:20px">
 
   <div class="section-title">🗓 Itinéraire jour par jour</div>
+  <div class="j-sync-hint">🔄 <span>Journal & Carte sont synchronisés — toute modification ici s'affiche sur la carte, et vice versa. Cliquer sur <b>🗺</b> pour voir un lieu sur la carte.</span></div>
   <div class="days-grid" id="journal-days"></div>
 
   <div class="section-title">🏖 Les plages incontournables</div>
@@ -414,9 +441,19 @@ const mk=(o)=>Object.assign({photo:null,done:false},o);
 const LBF={n:'Logement — Bonifacio',t:'logement',c:[41.387,9.159],time:'',notes:'18 Rue Doria'};
 const LSG={n:'Logement — Santa Giulia',t:'logement',c:[41.522,9.332],time:'',notes:'Baie de Santa Giulia'};
 
+const DAY_TITLES=[
+  'Arrivée → Bonifacio 🏰',
+  'Îles Lavezzi 🏝️',
+  'Route des plages → Porto-Vecchio 🏖️',
+  'Alta Rocca & Aiguilles de Bavella 🏔️',
+  'Sartène & côte ouest 🦁',
+  'Journée libre ☀️',
+  'Dernier matin 🛍️',
+  'Retour Paris ✈️',
+];
 let S={
   day:0,pc:null,pt:'autre',editIdx:null,showRoute:true,
-  days:Array.from({length:8},(_,i)=>({date:DATES[i],locs:[]}))
+  days:Array.from({length:8},(_,i)=>({date:DATES[i],title:DAY_TITLES[i],locs:[]}))
 };
 S.days[0].locs=[mk({id:1,n:'Vol CDG → Figari',t:'vol',c:FIGARI,time:'09:10',notes:'XK1706 · arr. 11h05'}),mk({...LBF,id:11,notes:'18 Rue Doria · check-in'}),mk({id:12,n:'Citadelle de Bonifacio',t:'village',c:[41.3875,9.1595],time:'14:00',notes:'Falaises à pic · ⭐4.8'}),mk({id:13,n:"Escalier du Roy d'Aragon",t:'rando',c:[41.3845,9.1577],time:'15:00',notes:'Taillé dans la falaise'}),mk({id:14,n:'Dîner — Ruelles ville haute',t:'resto',c:[41.3878,9.1592],time:'19:30',notes:'Spécialités corses'})];
 S.days[1].locs=[mk({...LBF,id:21}),mk({id:22,n:'Îles Lavezzi',t:'plage',c:[41.3333,9.2500],time:'09:00',notes:'Réserve naturelle · snorkeling'}),mk({id:23,n:'Phare de Pertusato',t:'rando',c:[41.3705,9.1775],time:'15:00',notes:'Rando côtière'}),mk({id:24,n:'Dîner — Port de Bonifacio',t:'resto',c:[41.3912,9.1613],time:'20:00',notes:'Vue port'})];
@@ -428,7 +465,8 @@ S.days[6].locs=[mk({...LSG,id:71}),mk({id:72,n:'Matinée plage',t:'plage',c:[41.
 S.days[7].locs=[mk({...LSG,id:81,notes:'check-out'}),mk({id:82,n:'Vol Figari → ORY',t:'vol',c:FIGARI,time:'17:40',notes:'XK754 · arr. 19h25'})];
 
 const saved=localStorage.getItem('corse26v11');
-if(saved){try{const d=JSON.parse(saved);if(d.days)S.days=d.days;}catch(e){}}
+if(saved){try{const d=JSON.parse(saved);if(d.days){S.days=d.days;// ensure titles exist
+S.days.forEach((day,i)=>{if(!day.title)day.title=DAY_TITLES[i];});}}catch(e){}}
 function save(){try{localStorage.setItem('corse26v11',JSON.stringify({days:S.days}));}catch(e){}}
 
 // ════════════════════════════════════
@@ -446,25 +484,95 @@ function switchTab(id,btn){
     if(!mapReady){initMap();mapReady=true;}
     else setTimeout(()=>map.invalidateSize(),50);
   }
+  if(id==='journal')renderJournal();
 }
 
 // ════════════════════════════════════
-// JOURNAL RENDER
+// JOURNAL RENDER (synced with S.days)
 // ════════════════════════════════════
 function renderJournal(){
-  document.getElementById('journal-days').innerHTML=JOURNAL_DAYS.map(d=>{
-    const acts=d.acts.map(a=>{
-      if(a.warn)return`<div class="day-warn">${a.warn}</div>`;
-      return`<div class="day-act"><span class="ic">${a.ic}</span><span>${a.txt}</span></div>`;
+  document.getElementById('journal-days').innerHTML=S.days.map((day,di)=>{
+    const col=COLORS[di];
+    const title=day.title||`Jour ${di+1}`;
+    const locs=day.locs.map((loc,li)=>{
+      const ty=TYPES.find(t=>t.id===loc.t)||TYPES[7];
+      const mapBtn=loc.c?`<button class="jloc-btn map-fly" title="Voir sur la carte" onclick="event.stopPropagation();jumpToMap(${di},${JSON.stringify(loc.c)})">🗺</button>`:'';
+      const meta=[ty.lb,loc.time,loc.notes].filter(Boolean).join(' · ');
+      return`<div class="jloc ${loc.done?'done-loc':''}">
+        <span class="jloc-icon">${ty.ic}</span>
+        <div class="jloc-info">
+          <div class="jloc-name">${loc.n}${loc.done?'<span class="jloc-done-badge">Fait ✓</span>':''}</div>
+          ${meta?`<div class="jloc-meta">${meta}</div>`:''}
+        </div>
+        <div class="jloc-actions">
+          ${mapBtn}
+          <button class="jloc-btn" title="Modifier" onclick="event.stopPropagation();openModalFromJournal(${di},${li})">✏️</button>
+          <button class="jloc-btn del" title="Supprimer" onclick="event.stopPropagation();removeLocFromJournal(${di},${li})">×</button>
+        </div>
+      </div>`;
     }).join('');
     return`<div class="day-card">
       <div class="day-card-hdr">
-        <div class="day-card-num" style="background:${d.color}">${d.num}</div>
-        <div><div class="day-card-title">${d.title}</div><div class="day-card-date">${d.date}</div></div>
+        <div class="day-card-num" style="background:${col}">${di+1}</div>
+        <div class="day-card-title-wrap">
+          <input class="day-card-title" value="${title.replace(/"/g,'&quot;')}" 
+            onchange="S.days[${di}].title=this.value;syncMapFromJournal(${di})" 
+            placeholder="Titre du jour…">
+          <input class="day-card-date" value="${day.date||''}" 
+            onchange="S.days[${di}].date=this.value;syncMapFromJournal(${di})" 
+            placeholder="Date…">
+        </div>
+        <div class="day-card-hdr-actions">
+          <button class="jbtn map" onclick="jumpToMap(${di},null)" title="Ouvrir sur la carte">🗺 J${di+1}</button>
+        </div>
       </div>
-      <div class="day-card-body">${acts}</div>
+      <div class="day-card-body">
+        ${locs||'<div style="font-size:12px;color:var(--muted);padding:4px 0">Aucune étape pour ce jour</div>'}
+        <button class="j-add-btn" onclick="openModalFromJournal(${di},null)">+ Ajouter une étape</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+function jumpToMap(di,coords){
+  // Switch to map tab
+  const mapBtn=document.querySelector('.tnav:nth-child(2)');
+  switchTab('carte',mapBtn);
+  // Select the day
+  selDay(di);
+  // Fly to coords if provided
+  if(coords&&map){
+    setTimeout(()=>map.flyTo(coords,14,{duration:1.2,easeLinearity:.4}),500);
+  }
+}
+
+function openModalFromJournal(di,li){
+  // Switch context to the right day then open modal
+  S.day=di;
+  if(li===null){
+    openModal(null);
+  } else {
+    openModal(li);
+  }
+  // Override modal title to show we're in journal mode
+}
+
+function removeLocFromJournal(di,li){
+  S.days[di].locs.splice(li,1);
+  renderJournal();
+  // Also update map if initialized
+  if(mapReady){
+    if(S.day===di)renderDay();
+    drawStaticLayers();
+    animateDay(S.day);
+  }
+  save();
+}
+
+function syncMapFromJournal(di){
+  renderPills&&renderPills();
+  if(mapReady&&S.day===di)renderDay();
+  save();
 }
 
 // ════════════════════════════════════
@@ -632,8 +740,13 @@ function renderDay(){
   const sortBtn=day.locs.some(l=>l.time)?`<button onclick="sortByTime()" style="flex-shrink:0;padding:4px 10px;border:1.5px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif" onmouseover="this.style.color='var(--orange)'" onmouseout="this.style.color='var(--muted)'">⏱ Trier</button>`:'';
   document.getElementById('day-panel').innerHTML=`
     <div class="dp-hd"><div class="dp-badge" style="background:${col}">${S.day+1}</div>
-      <div style="flex:1"><div class="dp-label" style="color:${col}">Jour ${S.day+1}</div>
-      <input class="dp-datein" type="text" value="${day.date}" onchange="S.days[${S.day}].date=this.value;renderPills();save()"></div>
+      <div style="flex:1">
+        <input style="font-family:'Fredoka One',cursive;font-size:15px;color:${col};border:none;background:transparent;width:100%;padding:1px 4px;border-radius:5px;line-height:1.2" 
+          value="${(day.title||'Jour '+(S.day+1)).replace(/"/g,'&quot;')}" 
+          onchange="S.days[${S.day}].title=this.value;renderJournal();save()" 
+          placeholder="Titre du jour…">
+        <input class="dp-datein" type="text" value="${day.date}" onchange="S.days[${S.day}].date=this.value;renderPills();renderJournal();save()">
+      </div>
       ${sortBtn}
     </div>
     ${note?`<div class="dp-note">${note}</div>`:''}
@@ -649,19 +762,25 @@ function renderDay(){
   });
 }
 function renderChips(){document.getElementById('chips').innerHTML=SUGGEST.map((s,i)=>`<span class="chip" onclick="addSugg(${i})">${s.n}</span>`).join('');}
-function selDay(i){S.day=i;renderPills();renderDay();drawStaticLayers();animateDay(i);}
+function selDay(i){S.day=i;renderPills();renderDay();drawStaticLayers();animateDay(i);highlightJournalDay(i);}
+function highlightJournalDay(di){
+  document.querySelectorAll('#journal-days .day-card').forEach((el,i)=>{
+    el.style.boxShadow=i===di?`0 0 0 2px ${COLORS[di]},var(--shadow)`:'var(--shadow)';
+    el.style.borderColor=i===di?COLORS[di]:'var(--border)';
+  });
+}
 function flyToLoc(c){if(c&&map)map.flyTo(c,14,{duration:1,easeLinearity:.4});}
-function addSugg(i){const s=SUGGEST[i];S.days[S.day].locs.push(mk({id:Date.now(),n:s.n,t:s.t,c:s.c,time:'',notes:''}));renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
-function removeLoc(di,li){S.days[di].locs.splice(li,1);renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
-function toggleDone(di,li){S.days[di].locs[li].done=!S.days[di].locs[li].done;renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
+function addSugg(i){const s=SUGGEST[i];S.days[S.day].locs.push(mk({id:Date.now(),n:s.n,t:s.t,c:s.c,time:'',notes:''}));renderPills();renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();}
+function removeLoc(di,li){S.days[di].locs.splice(li,1);renderPills();renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();}
+function toggleDone(di,li){S.days[di].locs[li].done=!S.days[di].locs[li].done;renderPills();renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();}
 function sortByTime(){S.days[S.day].locs.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return -1;return a.time.localeCompare(b.time);});renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
-function openThumbUpload(di,li){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async()=>{if(!inp.files[0])return;const b=await compressImage(inp.files[0]);S.days[di].locs[li].photo=b;renderDay();drawStaticLayers();animateDay(S.day);save();};inp.click();}
+function openThumbUpload(di,li){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async()=>{if(!inp.files[0])return;const b=await compressImage(inp.files[0]);S.days[di].locs[li].photo=b;renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();};inp.click();}
 
 // Drag & drop
 let dragIdx=null;
 function dragStart(e,i){dragIdx=i;setTimeout(()=>e.target.closest('.tl-item').classList.add('dragging'),0);e.dataTransfer.effectAllowed='move';}
 function dragOver(e,i){e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.tl-item').forEach((el,j)=>el.classList.toggle('drag-over',j===i&&j!==dragIdx));}
-function dragDrop(e,i){e.preventDefault();if(dragIdx!==null&&dragIdx!==i){const l=S.days[S.day].locs,m=l.splice(dragIdx,1)[0];l.splice(i,0,m);renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}}
+function dragDrop(e,i){e.preventDefault();if(dragIdx!==null&&dragIdx!==i){const l=S.days[S.day].locs,m=l.splice(dragIdx,1)[0];l.splice(i,0,m);renderPills();renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();}}
 function dragEnd(e){document.querySelectorAll('.tl-item').forEach(el=>el.classList.remove('dragging','drag-over'));dragIdx=null;}
 
 // ════════════════════════════════════
@@ -758,7 +877,7 @@ function saveLocation(){
   const isEdit=S.editIdx!==null&&S.editIdx!==undefined;
   if(isEdit){const loc=S.days[S.day].locs[S.editIdx];loc.n=n;loc.t=S.pt;loc.c=S.pc;loc.time=document.getElementById('m-time').value;loc.notes=document.getElementById('m-notes').value.trim();loc.done=document.getElementById('m-done').checked;if(pendingPhoto)loc.photo=pendingPhoto;}
   else S.days[S.day].locs.push(mk({id:Date.now(),n,t:S.pt,c:S.pc,time:document.getElementById('m-time').value,notes:document.getElementById('m-notes').value.trim(),photo:pendingPhoto||null}));
-  closeModal();renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
+  closeModal();renderPills();renderDay();renderJournal();drawStaticLayers();animateDay(S.day);save();
   if(!isEdit&&S.pc&&map)map.flyTo(S.pc,12,{duration:1});
 }
 document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
