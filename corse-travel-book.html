@@ -120,6 +120,13 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 .field input:focus{outline:none;border-color:var(--blue)}
 
 /* Photo upload */
+.addr-wrap{position:relative}
+.addr-results{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--border);border-top:none;border-radius:0 0 10px 10px;max-height:160px;overflow-y:auto;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.addr-item{padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;gap:7px;line-height:1.4;color:var(--navy)}
+.addr-item:hover{background:var(--bg)}
+.addr-item:last-child{border-bottom:none}
+.addr-item .addr-main{font-weight:500}
+.addr-item .addr-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .photo-drop{border:2px dashed var(--border);border-radius:12px;min-height:90px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:var(--bg);overflow:hidden;position:relative}
 .photo-drop:hover{border-color:var(--orange);background:#FFF5E8}
 .photo-drop.has-img{border-style:solid;border-color:var(--orange)}
@@ -201,6 +208,14 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
     </div>
 
     <div class="field"><label>Nom du lieu</label><input id="m-name" type="text" placeholder="ex. Calanques de Piana…"></div>
+    <div class="field">
+      <label>Adresse exacte <span style="font-weight:400;text-transform:none;font-size:10px;color:var(--muted)">(pour placer le pin précisément)</span></label>
+      <div class="addr-wrap">
+        <input id="m-search" type="text" placeholder="ex. 18 Rue Doria, Bonifacio, Corse…" oninput="searchAddr(this.value)" autocomplete="off">
+        <div id="m-addr-results" class="addr-results" style="display:none"></div>
+      </div>
+      <div id="m-coords" style="font-family:var(--font-mono,monospace);font-size:10px;color:var(--muted);margin-top:5px"></div>
+    </div>
     <div class="field"><label>Type</label><div class="type-grid" id="m-types"></div></div>
     <div style="display:flex;gap:10px">
       <div class="field" style="flex:1"><label>Heure</label><input id="m-time" type="time"></div>
@@ -364,9 +379,9 @@ S.days[7].locs=[
   L_({id:2, n:'Vol Figari → ORY',         t:'vol',      c:FIGARI,              time:'17:40',notes:'XK754 · arr. 19h25',photo:null,done:false}),
 ];
 
-const saved=localStorage.getItem('corse26v5');
+const saved=localStorage.getItem('corse26v6');
 if(saved){try{const d=JSON.parse(saved);if(d.days)S.days=d.days;}catch(e){}}
-function save(){try{localStorage.setItem('corse26v5',JSON.stringify({days:S.days}));}catch(e){}}
+function save(){try{localStorage.setItem('corse26v6',JSON.stringify({days:S.days}));}catch(e){}}
 
 // ── MAP ──
 let map,staticLayers=[],animRoutes=[],animTimer=null;
@@ -375,9 +390,21 @@ function initMap(){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
   map.on('click',e=>openModal(null,e.latlng.lat,e.latlng.lng));
 }
-function mkIcon(col,n,done){
+function mkIcon(col,n,done,type){
+  const ty=TYPES.find(t=>t.id===type)||TYPES[7];
   const bg=done?'#2A8A3A':col;
-  return L.divIcon({className:'',html:`<div style="width:30px;height:30px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.25)"><span style="transform:rotate(45deg);color:white;font-size:${done?'13px':'10px'};font-weight:900">${done?'✓':n}</span></div>`,iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-32]});
+  const inner=done
+    ?`<span style="font-size:16px;transform:rotate(45deg);display:block">✓</span>`
+    :`<span style="font-size:15px;transform:rotate(45deg);display:block;line-height:1">${ty.ic}</span>`;
+  const badge=done?'':`<div style="position:absolute;top:-5px;right:-6px;min-width:17px;height:17px;border-radius:9px;background:white;border:2.5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:${col};padding:0 3px;font-family:'Fredoka One',cursive">${n}</div>`;
+  return L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:38px;height:44px">
+      <div style="width:38px;height:38px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.28),0 1px 4px rgba(0,0,0,.12)">${inner}</div>
+      ${badge}
+    </div>`,
+    iconSize:[38,44],iconAnchor:[19,44],popupAnchor:[0,-46]
+  });
 }
 function drawStaticLayers(){
   staticLayers.forEach(l=>map.removeLayer(l));staticLayers=[];
@@ -387,7 +414,7 @@ function drawStaticLayers(){
     if(S.showRoute&&pts.length>1){const ln=L.polyline(pts,{color:col,weight:2,opacity:.18,dashArray:'6 8'}).addTo(map);staticLayers.push(ln);}
     day.locs.forEach((loc,li)=>{
       if(!loc.c)return;
-      const m=L.marker(loc.c,{icon:mkIcon(col,li+1,loc.done),opacity:.3}).addTo(map);
+      const m=L.marker(loc.c,{icon:mkIcon(col,li+1,loc.done,loc.t),opacity:.3}).addTo(map);
       staticLayers.push(m);
     });
   });
@@ -403,7 +430,7 @@ function animateDay(di){
     setTimeout(()=>{
       const ty=TYPES.find(t=>t.id===loc.t)||TYPES[7];
       const popId=`pop${loc.id}`;
-      const m=L.marker(loc.c,{icon:mkIcon(col,i+1,loc.done)}).addTo(map);
+      const m=L.marker(loc.c,{icon:mkIcon(col,i+1,loc.done,loc.t)}).addTo(map);
       m.bindPopup(L.popup({maxWidth:240,className:'photo-popup'}).setContent(
         `<div id="${popId}"><div class="pop-img">📸</div><div class="pop-body"><div class="pop-name">${ty.ic} ${loc.n}</div><div class="pop-meta">Jour ${di+1} · ${DATES[di]}${loc.time?' · '+loc.time:''}</div>${loc.notes?`<div style="font-size:11px;color:#555;margin-top:4px">${loc.notes}</div>`:''}</div></div>`
       ));
@@ -517,6 +544,40 @@ function openThumbUpload(di,li){
 }
 
 // ── MODAL ──
+// ── GEOCODING (Nominatim / OpenStreetMap) ──
+let addrTimer=null;
+async function searchAddr(q){
+  const el=document.getElementById('m-addr-results');
+  if(addrTimer)clearTimeout(addrTimer);
+  if(!q||q.length<3){el.style.display='none';el.innerHTML='';return;}
+  addrTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=fr`);
+      const data=await r.json();
+      if(!data.length){el.style.display='none';return;}
+      el.style.display='block';
+      el.innerHTML=data.map(d=>{
+        const parts=d.display_name.split(',');
+        const main=parts[0].trim();
+        const sub=parts.slice(1,4).join(',').trim();
+        return`<div class="addr-item" onclick="selectAddr(${d.lat},${d.lon},${JSON.stringify(main)})">
+          <span style="font-size:13px;flex-shrink:0">📍</span>
+          <div style="min-width:0"><div class="addr-main">${main}</div><div class="addr-sub">${sub}</div></div>
+        </div>`;
+      }).join('');
+    }catch(e){el.style.display='none';}
+  },420);
+}
+function selectAddr(lat,lng,name){
+  S.pc=[parseFloat(lat),parseFloat(lng)];
+  document.getElementById('m-addr-results').style.display='none';
+  document.getElementById('m-search').value='';
+  document.getElementById('m-coords').textContent=`📍 ${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)} — position définie`;
+  document.getElementById('m-coords').style.color='var(--green)';
+  if(!document.getElementById('m-name').value)document.getElementById('m-name').value=name;
+  map.flyTo([parseFloat(lat),parseFloat(lng)],15,{duration:1});
+}
+
 let pendingPhoto=null;
 function openModal(editIdx,lat,lng){
   S.editIdx=editIdx;
@@ -524,6 +585,20 @@ function openModal(editIdx,lat,lng){
   S.pt='autre';pendingPhoto=null;
   const isEdit=editIdx!==null&&editIdx!==undefined;
   const loc=isEdit?S.days[S.day].locs[editIdx]:null;
+
+  // Reset search & coords
+  document.getElementById('m-search').value='';
+  document.getElementById('m-addr-results').style.display='none';
+  const coordEl=document.getElementById('m-coords');
+  coordEl.style.color='var(--muted)';
+  if(S.pc) {
+    coordEl.textContent=`📍 ${lat.toFixed(5)}, ${lng.toFixed(5)} — position depuis la carte`;
+    coordEl.style.color='var(--green)';
+  } else if(isEdit&&loc.c) {
+    coordEl.textContent=`📍 ${loc.c[0].toFixed(5)}, ${loc.c[1].toFixed(5)}`;
+  } else {
+    coordEl.textContent='Recherche une adresse ci-dessus ou clique sur la carte';
+  }
 
   // Reset photo area
   const drop=document.getElementById('photo-drop');
