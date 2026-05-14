@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corse — 22·29 Mai 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Fredoka+One&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#F8F6F2;--white:#FFFFFF;--orange:#E8921A;--blue:#2756A0;
+  --red:#CC3320;--yellow:#F5C82A;--green:#2A8A3A;--navy:#1A2848;
+  --muted:#9A9080;--border:#ECEAE4;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy)}
+
+.hdr{height:62px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.hdr-logo{display:flex;align-items:baseline;gap:8px}
+.hdr-title{font-family:'Lilita One',cursive;font-size:30px;color:var(--orange);line-height:1}
+.hdr-meta{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-top:1px}
+.hdr-btns{margin-left:auto;display:flex;gap:8px}
+.hbtn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--border);background:var(--white);color:var(--navy);cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.hbtn:hover{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.hbtn.dim{opacity:.35}
+
+.layout{display:flex;height:calc(100vh - 62px);overflow:hidden}
+
+.sidebar{width:340px;flex-shrink:0;background:var(--white);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+
+.pills-wrap{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pills{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;width:46px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);transition:all .2s;user-select:none;position:relative}
+.pill:hover{border-color:var(--tc,var(--orange));transform:translateY(-2px)}
+.pill.on{background:var(--tc);border-color:var(--tc);box-shadow:0 4px 10px rgba(0,0,0,.15)}
+.pill .pn{font-family:'Fredoka One',cursive;font-size:20px;line-height:1;color:var(--navy)}
+.pill.on .pn{color:var(--white)}
+.pill .pd{font-size:8px;color:var(--muted);letter-spacing:.04em;margin-top:1px}
+.pill.on .pd{color:rgba(255,255,255,.7)}
+.pill .pbadge{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--tc);border:2px solid var(--white);font-size:8px;color:var(--white);display:flex;align-items:center;justify-content:center;font-weight:700;opacity:0;transition:opacity .2s}
+.pill.has .pbadge{opacity:1}
+.pill.on .pbadge{background:var(--white);color:var(--tc)}
+
+.day-panel{flex:1;overflow-y:auto;scrollbar-width:thin}
+.dp-hd{padding:14px 16px 10px;display:flex;align-items:center;gap:12px}
+.dp-badge{width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:26px;color:var(--white)}
+.dp-label{font-family:'Fredoka One',cursive;font-size:18px;line-height:1.1}
+.dp-datein{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);border:none;background:transparent;border-bottom:1px dashed var(--border);padding:1px 4px;width:88px;display:block;margin-top:3px}
+.dp-datein:focus{outline:none;border-bottom-color:var(--muted)}
+.dp-note{margin:0 16px 10px;padding:9px 12px;background:linear-gradient(135deg,#FFF8DC,#FFF3C0);border-radius:10px;font-size:12px;color:#6B5010;font-weight:500;border-left:3px solid var(--yellow);line-height:1.5}
+
+/* Timeline */
+.timeline{padding:0 16px 8px}
+.tl-item{display:flex;gap:12px;position:relative;padding:8px 0;border-radius:8px}
+.tl-item.done .tl-name{text-decoration:line-through;opacity:.55}
+.tl-item.done .tl-dot{background:var(--green)!important;box-shadow:0 0 0 2px var(--green)!important}
+.tl-item.done .tl-thumb{opacity:.5;filter:grayscale(.4)}
+.tl-left{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0;padding-top:4px}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid var(--white);box-shadow:0 0 0 2px var(--tc,var(--orange));background:var(--tc,var(--orange))}
+.tl-line{flex:1;width:2px;background:var(--border);margin-top:4px;min-height:14px}
+.tl-item:last-child .tl-line{display:none}
+.tl-card{flex:1;background:var(--white);border-radius:10px;padding:9px 10px;border:1px solid var(--border);cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.tl-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tc,var(--orange));border-radius:3px 0 0 3px}
+.tl-card:hover{border-color:var(--tc,var(--orange));box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.tl-row{display:flex;align-items:center;gap:9px}
+.tl-thumb{width:52px;height:46px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#F0EDE8;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border);cursor:pointer;transition:all .15s;position:relative}
+.tl-thumb:hover{border-color:var(--orange)}
+.tl-thumb img{width:52px;height:46px;object-fit:cover;display:block}
+.tl-thumb .thumb-add{position:absolute;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;font-size:16px}
+.tl-thumb:hover .thumb-add{opacity:1}
+.tl-info{flex:1;min-width:0}
+.tl-name{font-size:13px;font-weight:500;color:var(--navy);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.done-check{font-size:14px;margin-top:3px;display:inline-block;cursor:pointer;user-select:none;opacity:.6;transition:opacity .15s}
+.done-check:hover{opacity:1}
+.tl-actions{position:absolute;top:6px;right:6px;display:flex;gap:3px;opacity:0;transition:opacity .15s}
+.tl-card:hover .tl-actions{opacity:1}
+.tl-btn{background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:5px;font-size:13px;transition:all .15s;color:var(--muted)}
+.tl-btn:hover{background:var(--bg);color:var(--navy)}
+.tl-btn.del:hover{color:var(--red)}
+
+.tl-empty{text-align:center;padding:24px 14px;color:var(--muted);font-size:12px;background:var(--bg);border-radius:12px;border:1.5px dashed var(--border);line-height:2;margin-bottom:8px}
+.tl-add{width:100%;padding:10px;border:1.5px dashed var(--border);border-radius:10px;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.tl-add:hover{border-color:var(--tc,var(--orange));color:var(--tc,var(--orange));border-style:solid}
+
+.inspi{border-top:1px solid var(--border);padding:10px 16px 14px;flex-shrink:0;background:var(--bg)}
+.inspi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:5px;max-height:82px;overflow-y:auto;scrollbar-width:thin}
+.chip{padding:5px 11px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:500;border:1.5px solid var(--border);background:var(--white);color:var(--navy);transition:all .15s;white-space:nowrap}
+.chip:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.08);border-color:var(--orange)}
+
+.map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+.map-fabs{position:absolute;bottom:18px;right:14px;display:flex;flex-direction:column;gap:6px;z-index:999}
+.fab{background:var(--white);border:1px solid var(--border);border-radius:22px;padding:7px 16px;cursor:pointer;font-size:11px;font-weight:500;color:var(--navy);box-shadow:0 2px 10px rgba(0,0,0,.1);transition:all .2s;font-family:'DM Sans',sans-serif}
+.fab:hover{background:var(--navy);color:var(--white)}
+
+/* Photo popup */
+.photo-popup .leaflet-popup-content-wrapper{border-radius:14px;overflow:hidden;padding:0;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+.photo-popup .leaflet-popup-content{margin:0;width:230px!important}
+.pop-img{height:130px;background:#F0EDE8;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:28px}
+.pop-img img{width:100%;height:130px;object-fit:cover;display:block}
+.pop-body{padding:10px 12px 12px}
+.pop-name{font-size:13px;font-weight:600;color:#1A2848;margin-bottom:4px}
+.pop-meta{font-size:11px;color:#8A7F72;background:#F5F0E8;border-radius:6px;padding:2px 8px;display:inline-block}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,40,72,.45);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--white);border-radius:20px;padding:24px;width:400px;max-width:94vw;box-shadow:0 24px 60px rgba(26,40,72,.2);animation:mIn .2s ease;max-height:90vh;overflow-y:auto}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(-8px)}to{opacity:1;transform:none}}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal h3{font-family:'Fredoka One',cursive;font-size:21px;color:var(--navy)}
+.modal-close{background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted);line-height:1;padding:0 2px;transition:color .15s}
+.modal-close:hover{color:var(--navy)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:500}
+.field input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--bg);transition:border-color .2s}
+.field input:focus{outline:none;border-color:var(--blue)}
+
+/* Photo upload */
+.photo-drop{border:2px dashed var(--border);border-radius:12px;min-height:90px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:var(--bg);overflow:hidden;position:relative}
+.photo-drop:hover{border-color:var(--orange);background:#FFF5E8}
+.photo-drop.has-img{border-style:solid;border-color:var(--orange)}
+.photo-drop img{width:100%;max-height:140px;object-fit:cover;display:block}
+.photo-drop .photo-hint{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:12px;padding:16px}
+.photo-drop .photo-hint .ph-icon{font-size:26px}
+.photo-drop-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:500;gap:8px}
+.photo-drop.has-img:hover .photo-drop-overlay{display:flex}
+
+.type-grid{display:flex;flex-wrap:wrap;gap:6px}
+.tbtn{padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:11px;font-weight:500;background:var(--white);color:var(--navy);font-family:'DM Sans',sans-serif;transition:all .15s}
+.tbtn.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
+
+/* Done toggle */
+.done-toggle{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:10px;cursor:pointer;border:1.5px solid var(--border);transition:all .2s;margin-bottom:12px}
+.done-toggle:hover{border-color:var(--green)}
+.done-toggle input{width:16px;height:16px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+.done-toggle span{font-size:13px;font-weight:500}
+
+.m-actions{display:flex;gap:8px;margin-top:4px}
+.m-cancel{flex:1;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:none;cursor:pointer;font-size:12px;font-weight:500;font-family:'DM Sans',sans-serif;color:var(--muted);transition:all .2s}
+.m-cancel:hover{color:var(--navy);border-color:var(--navy)}
+.m-confirm{flex:2;padding:10px;border:none;border-radius:10px;background:var(--orange);color:var(--white);cursor:pointer;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;box-shadow:0 3px 0 #b86e10;transition:all .2s}
+.m-confirm:hover{background:#d07c10;transform:translateY(1px);box-shadow:0 2px 0 #a06008}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-title">Corse</div>
+    <span style="font-size:22px">🌴</span>
+  </div>
+  <div class="hdr-meta">22 · 29 MAI 2026 &nbsp;·&nbsp; 8 JOURS</div>
+  <div class="hdr-btns">
+    <button class="hbtn" onclick="fitAll()">↗ Vue globale</button>
+    <button class="hbtn" id="route-btn" onclick="toggleRoute()">〰 Tracé</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="pills-wrap"><div class="pills" id="pills"></div></div>
+    <div class="day-panel" id="day-panel"></div>
+    <div class="inspi">
+      <div class="inspi-lbl">🌊 Idées pour la route</div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-fabs">
+      <button class="fab" onclick="fitAll()">↗ Vue globale</button>
+      <button class="fab" id="fab-route" onclick="toggleRoute()">〰 Masquer tracé</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal add/edit -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="m-title">Ajouter un lieu</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+
+    <!-- Photo upload -->
+    <div class="field">
+      <label>Photo</label>
+      <div class="photo-drop" id="photo-drop" onclick="document.getElementById('photo-file').click()">
+        <div class="photo-hint">
+          <span class="ph-icon">📷</span>
+          <span>Ajouter une photo</span>
+          <span style="font-size:10px;color:var(--muted)">Cliquer pour choisir</span>
+        </div>
+        <div class="photo-drop-overlay">🔄 Changer la photo</div>
+      </div>
+      <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
+    </div>
+
+    <div class="field"><label>Nom du lieu</label><input id="m-name" type="text" placeholder="ex. Calanques de Piana…"></div>
+    <div class="field"><label>Type</label><div class="type-grid" id="m-types"></div></div>
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1"><label>Heure</label><input id="m-time" type="time"></div>
+      <div class="field" style="flex:2"><label>Notes</label><input id="m-notes" type="text" placeholder="Durée, résa…"></div>
+    </div>
+
+    <!-- Done toggle (edit only) -->
+    <div id="done-section" style="display:none">
+      <label class="done-toggle">
+        <input type="checkbox" id="m-done">
+        <span>✓ Marquer cette étape comme faite</span>
+      </label>
+    </div>
+
+    <div class="m-actions">
+      <button class="m-cancel" onclick="closeModal()">Annuler</button>
+      <button class="m-confirm" id="m-confirm-btn" onclick="saveLocation()">+ Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+const FIGARI=[41.5003,9.0978];
+const DATES=['22 mai','23 mai','24 mai','25 mai','26 mai','27 mai','28 mai','29 mai'];
+const COLORS=['#2756A0','#E8921A','#2E8038','#CC3320','#8848B8','#E06898','#1A9E90','#8A7F72'];
+const TYPES=[
+  {id:'plage',ic:'🏖',lb:'Plage'},{id:'village',ic:'🏘',lb:'Village'},
+  {id:'rando',ic:'🥾',lb:'Rando'},{id:'resto',ic:'🍽',lb:'Restaurant'},
+  {id:'logement',ic:'🏠',lb:'Logement'},{id:'vol',ic:'✈',lb:'Vol'},
+  {id:'nature',ic:'🌿',lb:'Nature'},{id:'autre',ic:'📍',lb:'Autre'},
+];
+const SUGGEST=[
+  {n:'Bonifacio',t:'village',c:[41.387,9.159]},{n:'Calanques de Piana',t:'nature',c:[42.233,8.648]},
+  {n:'Porto-Vecchio',t:'village',c:[41.589,9.280]},{n:'Palombaggia 🏖',t:'plage',c:[41.512,9.310]},
+  {n:'Gorges Restonica',t:'rando',c:[42.267,9.090]},{n:'Ajaccio',t:'village',c:[41.919,8.737]},
+  {n:'Calvi',t:'village',c:[42.567,8.757]},{n:'Bavella 🥾',t:'rando',c:[41.784,9.218]},
+  {n:'Corte',t:'village',c:[42.304,9.150]},{n:'Scandola 🌿',t:'nature',c:[42.367,8.567]},
+  {n:'Saleccia',t:'plage',c:[43.025,9.183]},{n:"Sant'Antonino",t:'village',c:[42.578,8.833]},
+  {n:'Bastia',t:'village',c:[42.703,9.450]},{n:"L'Île-Rousse",t:'village',c:[42.633,8.933]},
+  {n:'Rondinara 🏖',t:'plage',c:[41.466,9.249]},{n:'Porto',t:'village',c:[42.264,8.700]},
+  {n:'Propriano',t:'village',c:[41.676,8.898]},{n:'Sartène',t:'village',c:[41.623,8.972]},
+  {n:'Cap Corse',t:'nature',c:[43.010,9.380]},{n:'Lac de Nino 🥾',t:'rando',c:[42.385,8.983]},
+];
+
+// Wikipedia photo lookup
+const WIKI={
+  'Bonifacio':'Bonifacio','Porto-Vecchio':'Porto-Vecchio',
+  'Palombaggia':'Plage_de_Palombaggia','Calanques de Piana':'Calanche_de_Piana',
+  'Gorges Restonica':'Gorges_de_la_Restonica','Ajaccio':'Ajaccio',
+  'Calvi':'Calvi_(Haute-Corse)','Bavella':'Bavella_(Corse-du-Sud)',
+  'Corte':'Corte','Scandola':'Réserve_naturelle_de_Scandola',
+  'Saleccia':'Saleccia',"Sant'Antonino":"Sant'Antonino_(Haute-Corse)",
+  'Bastia':'Bastia',"L'Île-Rousse":"L'Île-Rousse",'Rondinara':'Rondinara_(baie)',
+  'Porto':'Porto_(Haute-Corse)','Propriano':'Propriano','Sartène':'Sartène',
+  'Cap Corse':'Cap_Corse','Lac de Nino':'Lac_de_Nino',
+  'Logement — Bonifacio':'Bonifacio','Logement — Santa Giulia':'Baie_de_Santa_Giulia',
+};
+const photoCache={};
+async function getPhoto(name){
+  const key=name.replace(/ 🏖| 🥾| 🌿/g,'').trim();
+  if(photoCache[key]!==undefined)return photoCache[key];
+  const title=WIKI[key]||key;
+  for(const lang of['fr','en']){
+    try{
+      const r=await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      if(r.ok){const d=await r.json();if(d.thumbnail?.source){const u=d.thumbnail.source.replace(/\/\d+px-/,'/600px-');photoCache[key]=u;return u;}}
+    }catch(e){}
+  }
+  photoCache[key]=null;return null;
+}
+
+// Image compression
+async function compressImage(file){
+  return new Promise(res=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=700;
+        const ratio=Math.min(MAX/img.width,MAX/img.height,1);
+        const c=document.createElement('canvas');
+        c.width=img.width*ratio;c.height=img.height*ratio;
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',.78));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// State
+const LBF={n:'Logement — Bonifacio',t:'logement',c:[41.387,9.159],time:'',notes:'18 Rue Doria',photo:null,done:false};
+const LSG={n:'Logement — Santa Giulia',t:'logement',c:[41.522,9.332],time:'',notes:'Baie de Santa Giulia',photo:null,done:false};
+
+let S={
+  day:0,pc:null,pt:'autre',pendingPhoto:null,editIdx:null,showRoute:true,
+  days:Array.from({length:8},(_,i)=>({date:DATES[i],locs:[]}))
+};
+const L_=(...o)=>Object.assign({photo:null,done:false},...o);
+// J1 — Vendredi 22 mai — Arrivée & Bonifacio
+S.days[0].locs=[
+  L_({id:1, n:'Vol CDG → Figari',        t:'vol',      c:FIGARI,              time:'09:10',notes:'XK1706 · arr. 11h05'}),
+  L_({id:11,n:'Logement — Bonifacio',     t:'logement', c:[41.387,9.159],      time:'',    notes:'18 Rue Doria · check-in'}),
+  L_({id:12,n:'Haute-Ville de Bonifacio', t:'village',  c:[41.3875,9.1595],    time:'14:00',notes:'Citadelle & remparts'}),
+  L_({id:13,n:'Escalier du Roy d\'Aragon',t:'rando',    c:[41.3845,9.1577],    time:'15:00',notes:'Taillé à même la falaise'}),
+  L_({id:14,n:'Dîner — Marina de Bonifacio',t:'resto',  c:[41.3912,9.1613],    time:'19:30',notes:'Spécialités corses · charcuterie, beignets'}),
+];
+// J2 — Samedi 23 mai — Îles Lavezzi & rando côtière
+S.days[1].locs=[
+  L_({id:21,n:'Logement — Bonifacio',     t:'logement', c:[41.387,9.159],      time:'',    notes:'18 Rue Doria · nuit 2'}),
+  L_({id:22,n:'Îles Lavezzi',             t:'plage',    c:[41.3333,9.2500],    time:'09:00',notes:'Réserve naturelle · snorkeling & pique-nique'}),
+  L_({id:23,n:'Phare de Pertusato',       t:'rando',    c:[41.3705,9.1775],    time:'15:00',notes:'Randonnée côtière · vues sur la ville'}),
+  L_({id:24,n:'Plage de Saint-Antoine',   t:'plage',    c:[41.3750,9.1520],    time:'16:00',notes:'Petite rando très accessible'}),
+  L_({id:25,n:'Dîner gastronomique — Citadelle',t:'resto',c:[41.3878,9.1592], time:'20:00',notes:'Vue panoramique · restaurant perché'}),
+];
+// J3 — Dimanche 24 mai — Transition vers Santa Giulia
+S.days[2].locs=[
+  L_({id:31,n:'Logement — Bonifacio',     t:'logement', c:[41.387,9.159],      time:'',    notes:'18 Rue Doria · check-out'}),
+  L_({id:32,n:'Plage de Rondinara',       t:'plage',    c:[41.4660,9.2490],    time:'10:30',notes:'Arrêt sur la route · baie en coquillage'}),
+  L_({id:33,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'14:00',notes:'Baie de Santa Giulia · check-in'}),
+  L_({id:34,n:'Lagon de Santa Giulia',    t:'plage',    c:[41.5210,9.3335],    time:'15:30',notes:'Détente · eaux turquoises'}),
+  L_({id:35,n:'Dîner paillotes Santa Giulia',t:'resto', c:[41.5205,9.3328],    time:'20:00',notes:'Les pieds dans le sable · poissons frais'}),
+];
+// J4 — Lundi 25 mai — Perles de Porto-Vecchio
+S.days[3].locs=[
+  L_({id:41,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'',    notes:'Baie de Santa Giulia'}),
+  L_({id:42,n:'Plage de Palombaggia',     t:'plage',    c:[41.5120,9.3100],    time:'09:30',notes:'Sable fin · rochers rouges · pins parasols'}),
+  L_({id:43,n:'Paddle & Kayak',           t:'autre',    c:[41.5120,9.3100],    time:'14:00',notes:'Activité nautique depuis la plage'}),
+  L_({id:44,n:'Vieille ville Porto-Vecchio',t:'village', c:[41.5910,9.2790],   time:'17:00',notes:'Ruelles animées · fin d\'après-midi'}),
+  L_({id:45,n:'Dégustation vins & fromages',t:'resto',  c:[41.5905,9.2795],    time:'19:00',notes:'Vins locaux corses · épicerie fine'}),
+];
+// J5 — Mardi 26 mai — Bavella & Alta Rocca
+S.days[4].locs=[
+  L_({id:51,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'',    notes:'Baie de Santa Giulia'}),
+  L_({id:52,n:'Forêt de l\'Ospedale',     t:'nature',   c:[41.6800,9.1970],    time:'09:30',notes:'Route sublime · barrage de l\'Ospedale'}),
+  L_({id:53,n:'Col de Bavella',           t:'nature',   c:[41.7840,9.2180],    time:'11:00',notes:'Vue panoramique sur les aiguilles'}),
+  L_({id:54,n:'Trou de la Bombe — Aiguilles de Bavella',t:'rando',c:[41.7820,9.2150],time:'11:30',notes:'Rando modérée · pins laricio · grandiose'}),
+  L_({id:55,n:'Déjeuner à Zonza',         t:'resto',    c:[41.7410,9.1730],    time:'13:30',notes:'Auberge de montagne · sanglier, pulenda, fiadone'}),
+];
+// J6 — Mercredi 27 mai — Farniente & criques
+S.days[5].locs=[
+  L_({id:61,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'',    notes:'Baie de Santa Giulia'}),
+  L_({id:62,n:'Lagon de Santa Giulia',    t:'plage',    c:[41.5210,9.3335],    time:'10:00',notes:'Journée détente · baignade'}),
+  L_({id:63,n:'Location bateau',          t:'autre',    c:[41.5220,9.3320],    time:'14:00',notes:'Exploration du littoral · criques secrètes'}),
+];
+// J7 — Jeudi 28 mai — Gastronomie & terroir
+S.days[6].locs=[
+  L_({id:71,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'',    notes:'Baie de Santa Giulia'}),
+  L_({id:72,n:'Plage matinale',           t:'plage',    c:[41.5210,9.3335],    time:'09:00',notes:'Matinée tranquille'}),
+  L_({id:73,n:'Domaine viticole — AOP Figari',t:'village',c:[41.5000,9.0980],  time:'15:00',notes:'Dégustation AOP Corse Figari · souvenirs'}),
+  L_({id:74,n:'Dîner gastronomique',      t:'resto',    c:[41.5905,9.2795],    time:'20:00',notes:'Dernier grand dîner · fruits de mer'}),
+];
+// J8 — Vendredi 29 mai — Dernier bain & départ
+S.days[7].locs=[
+  L_({id:81,n:'Logement — Santa Giulia',  t:'logement', c:[41.5220,9.3320],    time:'',    notes:'Baie de Santa Giulia · check-out'}),
+  L_({id:82,n:'Dernier bain — Santa Giulia',t:'plage',  c:[41.5210,9.3335],    time:'09:00',notes:'Brunch relaxant & dernier plongeon'}),
+  L_({id:83,n:'Départ vers Figari',       t:'autre',    c:FIGARI,              time:'14:30',notes:'Route vers l\'aéroport · restitution voiture'}),
+  L_({id:2, n:'Vol Figari → ORY',         t:'vol',      c:FIGARI,              time:'17:40',notes:'XK754 · arr. 19h25',photo:null,done:false}),
+];
+
+const saved=localStorage.getItem('corse26v5');
+if(saved){try{const d=JSON.parse(saved);if(d.days)S.days=d.days;}catch(e){}}
+function save(){try{localStorage.setItem('corse26v5',JSON.stringify({days:S.days}));}catch(e){}}
+
+// ── MAP ──
+let map,staticLayers=[],animRoutes=[],animTimer=null;
+function initMap(){
+  map=L.map('map',{center:[42.0,9.0],zoom:9});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  map.on('click',e=>openModal(null,e.latlng.lat,e.latlng.lng));
+}
+function mkIcon(col,n,done){
+  const bg=done?'#2A8A3A':col;
+  return L.divIcon({className:'',html:`<div style="width:30px;height:30px;background:${bg};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.25)"><span style="transform:rotate(45deg);color:white;font-size:${done?'13px':'10px'};font-weight:900">${done?'✓':n}</span></div>`,iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-32]});
+}
+function drawStaticLayers(){
+  staticLayers.forEach(l=>map.removeLayer(l));staticLayers=[];
+  S.days.forEach((day,di)=>{
+    if(di===S.day)return;
+    const col=COLORS[di],pts=day.locs.filter(l=>l.c).map(l=>l.c);
+    if(S.showRoute&&pts.length>1){const ln=L.polyline(pts,{color:col,weight:2,opacity:.18,dashArray:'6 8'}).addTo(map);staticLayers.push(ln);}
+    day.locs.forEach((loc,li)=>{
+      if(!loc.c)return;
+      const m=L.marker(loc.c,{icon:mkIcon(col,li+1,loc.done),opacity:.3}).addTo(map);
+      staticLayers.push(m);
+    });
+  });
+}
+function animateDay(di){
+  if(animTimer)clearTimeout(animTimer);
+  animRoutes.forEach(l=>map.removeLayer(l));animRoutes=[];
+  const day=S.days[di],col=COLORS[di],locs=day.locs.filter(l=>l.c);
+  if(!locs.length)return;
+  if(locs.length===1)map.flyTo(locs[0].c,13,{duration:1.4,easeLinearity:.4});
+  else map.flyToBounds(L.latLngBounds(locs.map(l=>l.c)),{padding:[60,60],duration:1.4,easeLinearity:.4,maxZoom:14});
+  locs.forEach((loc,i)=>{
+    setTimeout(()=>{
+      const ty=TYPES.find(t=>t.id===loc.t)||TYPES[7];
+      const popId=`pop${loc.id}`;
+      const m=L.marker(loc.c,{icon:mkIcon(col,i+1,loc.done)}).addTo(map);
+      m.bindPopup(L.popup({maxWidth:240,className:'photo-popup'}).setContent(
+        `<div id="${popId}"><div class="pop-img">📸</div><div class="pop-body"><div class="pop-name">${ty.ic} ${loc.n}</div><div class="pop-meta">Jour ${di+1} · ${DATES[di]}${loc.time?' · '+loc.time:''}</div>${loc.notes?`<div style="font-size:11px;color:#555;margin-top:4px">${loc.notes}</div>`:''}</div></div>`
+      ));
+      m.on('popupopen',()=>{
+        const photoSrc=loc.photo||null;
+        const el=document.getElementById(popId);
+        if(!el)return;
+        if(photoSrc){el.querySelector('.pop-img').innerHTML=`<img src="${photoSrc}">`;}
+        else{getPhoto(loc.n).then(url=>{if(!url)return;const e2=document.getElementById(popId);if(e2)e2.querySelector('.pop-img').innerHTML=`<img src="${url}">`});}
+      });
+      animRoutes.push(m);
+      if(S.showRoute&&i>0){
+        animRoutes.filter(l=>l instanceof L.Polyline).forEach(l=>map.removeLayer(l));
+        animRoutes=animRoutes.filter(l=>!(l instanceof L.Polyline));
+        const pts=locs.slice(0,i+1).map(l=>l.c);
+        animRoutes.push(L.polyline(pts,{color:col,weight:3.5,opacity:.75}).addTo(map));
+      }
+    },600+i*350);
+  });
+}
+function fitAll(){const pts=S.days.flatMap(d=>d.locs.filter(l=>l.c).map(l=>l.c));if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[40,40]});else map.setView([42.0,9.0],9);}
+function toggleRoute(){S.showRoute=!S.showRoute;document.getElementById('route-btn').classList.toggle('dim',!S.showRoute);document.getElementById('fab-route').textContent=S.showRoute?'〰 Masquer tracé':'〰 Afficher tracé';drawStaticLayers();animateDay(S.day);}
+
+// ── RENDER ──
+function render(){renderPills();renderDay();renderChips();drawStaticLayers();animateDay(S.day);}
+function renderPills(){
+  document.getElementById('pills').innerHTML=S.days.map((d,i)=>{
+    const col=COLORS[i],on=i===S.day,cnt=d.locs.length;
+    return`<div class="pill ${on?'on':''} ${cnt?'has':''}" style="--tc:${col}" onclick="selDay(${i})" title="${d.date}">
+      <span class="pn">${i+1}</span><span class="pd">${d.date.split(' ')[0]}</span>
+      ${cnt?`<div class="pbadge">${cnt}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function renderDay(){
+  const day=S.days[S.day],col=COLORS[S.day];
+  const note=S.day===0?'✈ Arrivée à Figari · 11h05':S.day===7?'✈ Départ Figari · 17h40':'';
+  const items=day.locs.map((loc,idx)=>{
+    const ty=TYPES.find(t=>t.id===loc.t)||TYPES[7];
+    const isDone=loc.done;
+    return`<div class="tl-item ${isDone?'done':''}" style="--tc:${col}">
+      <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="tl-card" style="--tc:${col}" onclick="flyToLoc(${loc.c?JSON.stringify(loc.c):'null'})">
+        <div class="tl-row">
+          <div class="tl-thumb" id="th-${loc.id}" onclick="event.stopPropagation();openThumbUpload(${S.day},${idx})">
+            📸
+            <div class="thumb-add">📷</div>
+          </div>
+          <div class="tl-info">
+            <div class="tl-name">${ty.ic} ${loc.n}${isDone?' <span style="font-size:10px;background:#2A8A3A;color:white;padding:1px 6px;border-radius:10px;vertical-align:middle">Fait ✓</span>':''}</div>
+            <div class="tl-meta">${ty.lb}${loc.time?' · '+loc.time:''}${loc.notes?' · '+loc.notes:''}</div>
+            <span class="done-check" onclick="event.stopPropagation();toggleDone(${S.day},${idx})" title="${isDone?'Marquer comme non fait':'Marquer comme fait'}">${isDone?'✅':'⬜'}</span>
+          </div>
+        </div>
+        <div class="tl-actions">
+          <button class="tl-btn" onclick="event.stopPropagation();openModal(${idx})" title="Modifier">✏️</button>
+          <button class="tl-btn del" onclick="event.stopPropagation();removeLoc(${S.day},${idx})" title="Supprimer">×</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('day-panel').innerHTML=`
+    <div class="dp-hd"><div class="dp-badge" style="background:${col}">${S.day+1}</div>
+      <div><div class="dp-label" style="color:${col}">Jour ${S.day+1}</div>
+      <input class="dp-datein" type="text" value="${day.date}" onchange="S.days[${S.day}].date=this.value;renderPills();save()"></div>
+    </div>
+    ${note?`<div class="dp-note">${note}</div>`:''}
+    <div class="timeline">
+      ${day.locs.length===0?`<div class="tl-empty">🗺 Aucun lieu pour ce jour<br><small>Cliquez sur la carte ou les idées ci-dessous</small></div>`:''}
+      ${items}
+      <button class="tl-add" style="--tc:${col}" onclick="openModal(null)">+ Ajouter un lieu</button>
+    </div>`;
+  // Load thumbnails async
+  day.locs.forEach(loc=>{
+    const el=document.getElementById(`th-${loc.id}`);
+    if(!el)return;
+    if(loc.photo){el.innerHTML=`<img src="${loc.photo}"><div class="thumb-add">📷</div>`;return;}
+    getPhoto(loc.n).then(url=>{
+      if(!url)return;
+      const e=document.getElementById(`th-${loc.id}`);
+      if(e&&!S.days[S.day].locs.find(l=>l.id===loc.id)?.photo)
+        e.innerHTML=`<img src="${url}"><div class="thumb-add">📷</div>`;
+    });
+  });
+}
+function renderChips(){
+  document.getElementById('chips').innerHTML=SUGGEST.map((s,i)=>`<span class="chip" onclick="addSugg(${i})">${s.n}</span>`).join('');
+}
+function selDay(i){S.day=i;renderPills();renderDay();drawStaticLayers();animateDay(i);}
+function flyToLoc(c){if(c)map.flyTo(c,14,{duration:1,easeLinearity:.4});}
+function addSugg(i){
+  const s=SUGGEST[i];
+  S.days[S.day].locs.push({id:Date.now(),n:s.n.replace(/ 🏖| 🥾| 🌿/g,''),t:s.t,c:s.c,time:'',notes:'',photo:null,done:false});
+  renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
+}
+function removeLoc(di,li){S.days[di].locs.splice(li,1);renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
+function toggleDone(di,li){S.days[di].locs[li].done=!S.days[di].locs[li].done;renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
+
+// Upload via thumb click
+function openThumbUpload(di,li){
+  S.editIdx=li;
+  const input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=async()=>{
+    if(!input.files[0])return;
+    const b64=await compressImage(input.files[0]);
+    S.days[di].locs[li].photo=b64;
+    renderDay();drawStaticLayers();animateDay(S.day);save();
+  };
+  input.click();
+}
+
+// ── MODAL ──
+let pendingPhoto=null;
+function openModal(editIdx,lat,lng){
+  S.editIdx=editIdx;
+  S.pc=(lat!==undefined)?[lat,lng]:null;
+  S.pt='autre';pendingPhoto=null;
+  const isEdit=editIdx!==null&&editIdx!==undefined;
+  const loc=isEdit?S.days[S.day].locs[editIdx]:null;
+
+  // Reset photo area
+  const drop=document.getElementById('photo-drop');
+  drop.classList.remove('has-img');
+  drop.innerHTML=`<div class="photo-hint"><span class="ph-icon">📷</span><span>Ajouter une photo</span><span style="font-size:10px;color:var(--muted)">Cliquer pour choisir</span></div><div class="photo-drop-overlay">🔄 Changer la photo</div>`;
+  document.getElementById('photo-file').value='';
+
+  if(isEdit){
+    document.getElementById('m-title').textContent=`Modifier — Jour ${S.day+1}`;
+    document.getElementById('m-confirm-btn').textContent='Enregistrer';
+    document.getElementById('m-name').value=loc.n;
+    document.getElementById('m-time').value=loc.time||'';
+    document.getElementById('m-notes').value=loc.notes||'';
+    document.getElementById('m-done').checked=!!loc.done;
+    document.getElementById('done-section').style.display='block';
+    S.pt=loc.t||'autre';
+    // Show existing photo
+    const photo=loc.photo;
+    if(photo){
+      pendingPhoto=photo;
+      drop.classList.add('has-img');
+      drop.innerHTML=`<img src="${photo}"><div class="photo-drop-overlay">🔄 Changer la photo</div>`;
+    } else {
+      getPhoto(loc.n).then(url=>{
+        if(url&&!pendingPhoto){
+          drop.classList.add('has-img');
+          drop.innerHTML=`<img src="${url}" style="opacity:.6"><div class="photo-drop-overlay">📷 Ajouter ma photo</div>`;
+        }
+      });
+    }
+  } else {
+    document.getElementById('m-title').textContent=`Ajouter — Jour ${S.day+1}`;
+    document.getElementById('m-confirm-btn').textContent='+ Ajouter';
+    document.getElementById('m-name').value='';
+    document.getElementById('m-time').value='';
+    document.getElementById('m-notes').value='';
+    document.getElementById('done-section').style.display='none';
+  }
+  renderTypeGrid();
+  document.getElementById('modal-bg').classList.add('open');
+  setTimeout(()=>document.getElementById('m-name').focus(),80);
+}
+function renderTypeGrid(){document.getElementById('m-types').innerHTML=TYPES.map(t=>`<button class="tbtn ${t.id===S.pt?'on':''}" onclick="selType('${t.id}')">${t.ic} ${t.lb}</button>`).join('');}
+function selType(id){S.pt=id;renderTypeGrid();}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');pendingPhoto=null;}
+
+async function handlePhotoUpload(input){
+  if(!input.files[0])return;
+  const b64=await compressImage(input.files[0]);
+  pendingPhoto=b64;
+  const drop=document.getElementById('photo-drop');
+  drop.classList.add('has-img');
+  drop.innerHTML=`<img src="${b64}"><div class="photo-drop-overlay">🔄 Changer la photo</div>`;
+}
+
+function saveLocation(){
+  const n=document.getElementById('m-name').value.trim();
+  if(!n){document.getElementById('m-name').focus();return;}
+  const isEdit=S.editIdx!==null&&S.editIdx!==undefined;
+  if(isEdit){
+    const loc=S.days[S.day].locs[S.editIdx];
+    loc.n=n;loc.t=S.pt;
+    loc.time=document.getElementById('m-time').value;
+    loc.notes=document.getElementById('m-notes').value.trim();
+    loc.done=document.getElementById('m-done').checked;
+    if(pendingPhoto)loc.photo=pendingPhoto;
+  } else {
+    S.days[S.day].locs.push({id:Date.now(),n,t:S.pt,c:S.pc,time:document.getElementById('m-time').value,notes:document.getElementById('m-notes').value.trim(),photo:pendingPhoto||null,done:false});
+  }
+  closeModal();renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
+  if(!isEdit&&S.pc)map.flyTo(S.pc,12,{duration:1});
+}
+document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+window.addEventListener('load',()=>{initMap();render();});
+</script>
+</body>
+</html>
