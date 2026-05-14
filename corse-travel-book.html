@@ -52,6 +52,11 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;backgroun
 
 /* Timeline */
 .timeline{padding:0 16px 8px}
+.tl-item.drag-over .tl-card{border-color:var(--orange);box-shadow:0 0 0 2px rgba(232,146,26,.3)}
+.tl-item.dragging{opacity:.35}
+.drag-handle{cursor:grab;color:var(--border);font-size:15px;padding:4px 2px;flex-shrink:0;line-height:1;transition:color .15s;user-select:none}
+.drag-handle:hover{color:var(--muted)}
+.drag-handle:active{cursor:grabbing}
 .tl-item{display:flex;gap:12px;position:relative;padding:8px 0;border-radius:8px}
 .tl-item.done .tl-name{text-decoration:line-through;opacity:.55}
 .tl-item.done .tl-dot{background:var(--green)!important;box-shadow:0 0 0 2px var(--green)!important}
@@ -379,9 +384,9 @@ S.days[7].locs=[
   L_({id:2, n:'Vol Figari → ORY',         t:'vol',      c:FIGARI,              time:'17:40',notes:'XK754 · arr. 19h25',photo:null,done:false}),
 ];
 
-const saved=localStorage.getItem('corse26v7');
+const saved=localStorage.getItem('corse26v8');
 if(saved){try{const d=JSON.parse(saved);if(d.days)S.days=d.days;}catch(e){}}
-function save(){try{localStorage.setItem('corse26v7',JSON.stringify({days:S.days}));}catch(e){}}
+function save(){try{localStorage.setItem('corse26v8',JSON.stringify({days:S.days}));}catch(e){}}
 
 // ── MAP ──
 let map,staticLayers=[],animRoutes=[],animTimer=null;
@@ -471,8 +476,14 @@ function renderDay(){
   const items=day.locs.map((loc,idx)=>{
     const ty=TYPES.find(t=>t.id===loc.t)||TYPES[7];
     const isDone=loc.done;
-    return`<div class="tl-item ${isDone?'done':''}" style="--tc:${col}">
+    return`<div class="tl-item ${isDone?'done':''}" style="--tc:${col}"
+      draggable="true"
+      ondragstart="dragStart(event,${idx})"
+      ondragover="dragOver(event,${idx})"
+      ondrop="dragDrop(event,${idx})"
+      ondragend="dragEnd(event)">
       <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+      <div class="drag-handle" title="Glisser pour réordonner">⠿</div>
       <div class="tl-card" style="--tc:${col}" onclick="flyToLoc(${loc.c?JSON.stringify(loc.c):'null'})">
         <div class="tl-row">
           <div class="tl-thumb" id="th-${loc.id}" onclick="event.stopPropagation();openThumbUpload(${S.day},${idx})">
@@ -494,8 +505,9 @@ function renderDay(){
   }).join('');
   document.getElementById('day-panel').innerHTML=`
     <div class="dp-hd"><div class="dp-badge" style="background:${col}">${S.day+1}</div>
-      <div><div class="dp-label" style="color:${col}">Jour ${S.day+1}</div>
+      <div style="flex:1"><div class="dp-label" style="color:${col}">Jour ${S.day+1}</div>
       <input class="dp-datein" type="text" value="${day.date}" onchange="S.days[${S.day}].date=this.value;renderPills();save()"></div>
+      ${day.locs.some(l=>l.time)?`<button onclick="sortByTime()" style="flex-shrink:0;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;background:none;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .2s" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">⏱ Trier</button>`:''}
     </div>
     ${note?`<div class="dp-note">${note}</div>`:''}
     <div class="timeline">
@@ -526,7 +538,45 @@ function addSugg(i){
   S.days[S.day].locs.push({id:Date.now(),n:s.n.replace(/ 🏖| 🥾| 🌿/g,''),t:s.t,c:s.c,time:'',notes:'',photo:null,done:false});
   renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
 }
-function removeLoc(di,li){S.days[di].locs.splice(li,1);renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
+function sortByTime(){
+  S.days[S.day].locs.sort((a,b)=>{
+    if(!a.time&&!b.time)return 0;
+    if(!a.time)return 1;
+    if(!b.time)return -1;
+    return a.time.localeCompare(b.time);
+  });
+  renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
+}
+
+// ── DRAG & DROP ──
+let dragIdx=null;
+function dragStart(e,idx){
+  dragIdx=idx;
+  setTimeout(()=>e.target.closest('.tl-item').classList.add('dragging'),0);
+  e.dataTransfer.effectAllowed='move';
+}
+function dragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.tl-item').forEach((el,i)=>{
+    el.classList.toggle('drag-over',i===idx&&i!==dragIdx);
+  });
+}
+function dragDrop(e,idx){
+  e.preventDefault();
+  if(dragIdx!==null&&dragIdx!==idx){
+    const locs=S.days[S.day].locs;
+    const moved=locs.splice(dragIdx,1)[0];
+    locs.splice(idx,0,moved);
+    renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();
+  }
+}
+function dragEnd(e){
+  document.querySelectorAll('.tl-item').forEach(el=>{
+    el.classList.remove('dragging','drag-over');
+  });
+  dragIdx=null;
+}S.days[di].locs.splice(li,1);renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
 function toggleDone(di,li){S.days[di].locs[li].done=!S.days[di].locs[li].done;renderPills();renderDay();drawStaticLayers();animateDay(S.day);save();}
 
 // Upload via thumb click
