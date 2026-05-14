@@ -379,9 +379,9 @@ S.days[7].locs=[
   L_({id:2, n:'Vol Figari → ORY',         t:'vol',      c:FIGARI,              time:'17:40',notes:'XK754 · arr. 19h25',photo:null,done:false}),
 ];
 
-const saved=localStorage.getItem('corse26v6');
+const saved=localStorage.getItem('corse26v7');
 if(saved){try{const d=JSON.parse(saved);if(d.days)S.days=d.days;}catch(e){}}
-function save(){try{localStorage.setItem('corse26v6',JSON.stringify({days:S.days}));}catch(e){}}
+function save(){try{localStorage.setItem('corse26v7',JSON.stringify({days:S.days}));}catch(e){}}
 
 // ── MAP ──
 let map,staticLayers=[],animRoutes=[],animTimer=null;
@@ -585,6 +585,7 @@ function openModal(editIdx,lat,lng){
   S.pt='autre';pendingPhoto=null;
   const isEdit=editIdx!==null&&editIdx!==undefined;
   const loc=isEdit?S.days[S.day].locs[editIdx]:null;
+  if(isEdit&&loc.c&&!S.pc) S.pc=loc.c; // preserve existing coords
 
   // Reset search & coords
   document.getElementById('m-search').value='';
@@ -661,6 +662,7 @@ function saveLocation(){
   if(isEdit){
     const loc=S.days[S.day].locs[S.editIdx];
     loc.n=n;loc.t=S.pt;
+    loc.c=S.pc; // update coords (from address search or map click)
     loc.time=document.getElementById('m-time').value;
     loc.notes=document.getElementById('m-notes').value.trim();
     loc.done=document.getElementById('m-done').checked;
